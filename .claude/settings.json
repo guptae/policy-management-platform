@@ -1,0 +1,23 @@
+{
+    "model": "sonnet",
+    "permissions": {
+        "allow": [
+            "Bash(git status)",
+            "Bash(git diff:*)",
+            "Bash(git log:*)",
+            "Bash(mvn:*)",
+            "Bash(./mvnw:*)",
+            "Bash(ng:*)",
+            "Bash(npm:*)",
+            "Bash(docker compose:*)"
+        ]
+    },
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit|Bash",
+                "hooks": [{"type": "command", "command": "node \"/Users/ektagupta/Projects/AI-Infinity/policy-management-platform/.claude/hooks/pre_tool_use.js\""}]
+            }
+        ]
+    }
+}
