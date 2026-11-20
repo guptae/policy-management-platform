@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: policydb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+    ports: 
+      - "5432:5432"
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d policydb"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports: 
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/policydb
+      DB_USERNAME: admin
+      DB_PASSWORD: secret
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    ports: 
+      - "4200:80"
+    depends_on: [backend]
+
+volumes:
+  pgdata:

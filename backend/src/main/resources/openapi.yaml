@@ -1,0 +1,330 @@
+openapi: 3.0.3
+info:
+  title: Policy Management API
+  description: Backend-for-Frontend REST API for managing APAC insurance policies.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local
+tags:
+  - name: Policies
+    description: Policy search, retrieval, summary and flagging
+
+paths:
+  /api/v1/policies:
+    get:
+      tags: [Policies]
+      operationId: listPolicies
+      summary: List policies (paged, filterable, sortable)
+      parameters:
+        - name: page
+          in: query
+          description: Zero-based page index.
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: Page size.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 20
+        - name: sort
+          in: query
+          description: "Sort expression in the form `property,direction`, e.g. `premiumAmount,desc`."
+          schema:
+            type: string
+            example: premiumAmount,desc
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PolicyStatus'
+        - name: lineOfBusiness
+          in: query
+          schema:
+            $ref: '#/components/schemas/LineOfBusiness'
+        - name: region
+          in: query
+          schema:
+            type: string
+            example: Singapore
+        - name: effectiveDateFrom
+          in: query
+          description: Include policies with an effective date on or after this date.
+          schema:
+            type: string
+            format: date
+        - name: effectiveDateTo
+          in: query
+          description: Include policies with an effective date on or before this date.
+          schema:
+            type: string
+            format: date
+        - name: search
+          in: query
+          description: Free-text search (e.g. policy number or policyholder name).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A page of policies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedPolicyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/policies/{id}:
+    get:
+      tags: [Policies]
+      operationId: getPolicyById
+      summary: Get a policy by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The policy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Policy not found.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /api/v1/policies/flag:
+    patch:
+      tags: [Policies]
+      operationId: flagPolicies
+      summary: Flag multiple policies in bulk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkFlagRequest'
+      responses:
+        '200':
+          description: Per-policy outcome of the flag operation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkFlagResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/policies/summary:
+    get:
+      tags: [Policies]
+      operationId: getPolicySummary
+      summary: Get aggregate policy summary
+      responses:
+        '200':
+          description: Aggregate figures across policies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicySummaryResponse'
+
+components:
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+  schemas:
+    PolicyStatus:
+      type: string
+      enum: [Active, Expired, Pending, Cancelled]
+
+    LineOfBusiness:
+      type: string
+      enum: [Property, Casualty, A&H, Marine]
+
+    PolicyResponse:
+      type: object
+      required:
+        - id
+        - policyNumber
+        - policyholderName
+        - status
+        - lineOfBusiness
+        - region
+        - premiumAmount
+        - currency
+        - effectiveDate
+        - expiryDate
+        - underwriter
+        - flaggedForReview
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        policyNumber:
+          type: string
+          example: POL-2025-000123
+        policyholderName:
+          type: string
+        status:
+          $ref: '#/components/schemas/PolicyStatus'
+        lineOfBusiness:
+          $ref: '#/components/schemas/LineOfBusiness'
+        region:
+          type: string
+          example: Singapore
+        premiumAmount:
+          type: number
+          format: decimal
+          example: 12500.50
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+          example: SGD
+        effectiveDate:
+          type: string
+          format: date
+        expiryDate:
+          type: string
+          format: date
+        underwriter:
+          type: string
+        flaggedForReview:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PagedPolicyResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PolicyResponse'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page index.
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+
+    PolicySummaryResponse:
+      type: object
+      required:
+        - totalPolicies
+        - countByStatus
+        - totalPremiumByLineOfBusiness
+        - expiringSoonCount
+      properties:
+        totalPolicies:
+          type: integer
+          format: int64
+        countByStatus:
+          type: object
+          description: Policy count keyed by status label.
+          additionalProperties:
+            type: integer
+            format: int64
+          example:
+            Active: 120
+            Expired: 40
+            Pending: 25
+            Cancelled: 15
+        totalPremiumByLineOfBusiness:
+          type: object
+          description: >-
+            Total premium keyed by line of business label, then by ISO 4217 currency code.
+            Premiums are never summed across currencies.
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: number
+              format: decimal
+          example:
+            Property:
+              SGD: 1250000.00
+              USD: 830000.50
+            A&H:
+              JPY: 410000.00
+        expiringSoonCount:
+          type: integer
+          format: int64
+          description: Number of policies expiring within the next 30 days (today inclusive).
+
+    BulkFlagRequest:
+      type: object
+      required: [policyIds]
+      properties:
+        policyIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+
+    BulkFlagResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: object
+          description: >-
+            Outcome per requested policy, keyed by policy UUID. Each value is one of
+            `updated` (the policy was flagged for review) or `not_found` (no policy has that id).
+          additionalProperties:
+            type: string
+            enum: [updated, not_found]
+          example:
+            3fa85f64-5717-4562-b3fc-2c963f66afa6: updated
+            7c9e6679-7425-40de-944b-e07fc1f90ae7: not_found
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 problem details.
+      properties:
+        type:
+          type: string
+          format: uri
+          default: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+      additionalProperties: true
