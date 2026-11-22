@@ -1,0 +1,57 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar {
+  gap: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.logo {
+  color: var(--color-accent);
+}
+
+.brand {
+  font: var(--mat-sys-title-large);
+  margin-right: 1rem;
+}
+
+.nav a.active {
+  background: var(--color-accent-container);
+  color: var(--color-on-accent-container);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.content {
+  flex: 1;
+  padding: 1.5rem;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  // Programmatic focus target for the skip link; the ring would just outline the whole page.
+  &:focus {
+    outline: none;
+  }
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}

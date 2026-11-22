@@ -1,0 +1,110 @@
+<section class="summary" aria-labelledby="summary-heading" [attr.aria-busy]="loading()">
+  <header class="head">
+    <div>
+      <h2 id="summary-heading">Portfolio overview</h2>
+      <p class="sub">
+        All policies, regardless of table filters
+        @if (updatedAt(); as at) {
+          · updated {{ at | date: 'shortTime' }}
+        }
+      </p>
+    </div>
+    <button
+      mat-icon-button
+      type="button"
+      class="refresh"
+      [class.spinning]="loading()"
+      [disabled]="loading()"
+      (click)="refresh()"
+      matTooltip="Refresh summary"
+      aria-label="Refresh summary"
+    >
+      <mat-icon aria-hidden="true">refresh</mat-icon>
+    </button>
+  </header>
+
+  @if (error(); as e) {
+    <app-error-alert
+      [title]="summary() ? 'Couldn’t refresh summary' : e.title"
+      [message]="e.message"
+      [dismissible]="false"
+      [retryable]="true"
+      (retry)="refresh()"
+    />
+  }
+
+  @if (summary(); as s) {
+    <div class="tiles">
+      @for (t of tiles(); track t.tone) {
+        <div class="tile" [attr.data-tone]="t.tone">
+          <mat-icon class="tile-icon" aria-hidden="true">{{ t.icon }}</mat-icon>
+          <div class="tile-body">
+            <span class="tile-label">{{ t.label }}</span>
+            <span class="tile-value">{{ t.value | number }}</span>
+            <span class="tile-hint">{{ t.hint }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="premium">
+      <h3>Total premium by line of business</h3>
+      @if (premiumRows().length) {
+        <div class="table-scroll">
+          <table>
+            <caption class="sr-only">
+              Total premium per line of business, by currency. Amounts are not converted or summed across currencies.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Line of business</th>
+                @for (c of currencies(); track c) {
+                  <th scope="col" class="num">{{ c }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of premiumRows(); track row.lob) {
+                <tr>
+                  <th scope="row">{{ row.lob }}</th>
+                  @for (c of currencies(); track c) {
+                    <td class="num">
+                      @if (row.byCurrency[c] !== undefined) {
+                        {{ row.byCurrency[c] | currencyFormat: c : 'none' }}
+                      } @else {
+                        <span class="muted" aria-hidden="true">—</span><span class="sr-only">None</span>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Amounts are shown per currency and are not converted or summed across currencies.</p>
+      } @else {
+        <p class="muted">No premium recorded yet.</p>
+      }
+    </div>
+  } @else if (loading()) {
+    <div class="tiles" aria-hidden="true">
+      @for (i of skeletonTiles; track i) {
+        <div class="tile skeleton-tile">
+          <span class="sk sk-icon"></span>
+          <div class="tile-body">
+            <span class="sk sk-label"></span>
+            <span class="sk sk-value"></span>
+            <span class="sk sk-hint"></span>
+          </div>
+        </div>
+      }
+    </div>
+    <div class="premium" aria-hidden="true">
+      <span class="sk sk-title"></span>
+      @for (i of skeletonRows; track i) {
+        <span class="sk sk-row"></span>
+      }
+    </div>
+    <span class="sr-only">Loading summary…</span>
+  }
+</section>

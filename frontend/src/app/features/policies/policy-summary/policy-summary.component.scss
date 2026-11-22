@@ -1,0 +1,171 @@
+// Tile accents (light, dark). Colour is identity only: every tile also has an icon and a label,
+// and values/labels stay in text colours.
+.summary {
+  --tone-active: light-dark(#2a78d6, #3987e5);
+  --tone-expired: light-dark(#d03b3b, #e66767);
+  --tone-pending: light-dark(#c98500, #fab219);
+  --tone-expiring: light-dark(#eb6834, #ec835a);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+h2 {
+  font: var(--mat-sys-title-large);
+  margin: 0;
+}
+
+h3 {
+  font: var(--mat-sys-title-small);
+  margin: 0 0 0.75rem;
+}
+
+.sub,
+.note,
+.muted,
+.tile-hint {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.note {
+  margin-top: 0.5rem;
+}
+
+.spinning mat-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.tile {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-left: 4px solid var(--tone, var(--mat-sys-outline-variant));
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+
+  @each $tone in active, expired, pending, expiring {
+    &[data-tone='#{$tone}'] {
+      --tone: var(--tone-#{$tone});
+    }
+  }
+}
+
+.tile-icon {
+  color: var(--tone);
+  flex: none;
+}
+
+.tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tile-label {
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tile-value {
+  font: var(--mat-sys-headline-medium);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.premium {
+  padding: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+}
+
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  white-space: nowrap;
+}
+
+thead th {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+// While refreshing, keep figures at full contrast (dimming text would drop it below 4.5:1);
+// the spinning refresh button and aria-busy signal the in-flight request instead.
+
+// Skeleton
+.sk {
+  display: block;
+  border-radius: var(--mat-sys-corner-small);
+  background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--mat-sys-surface) 60%, transparent),
+      transparent
+    )
+    0 0 / 200% 100% no-repeat,
+    var(--mat-sys-surface-container-highest);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.sk-icon { width: 24px; height: 24px; flex: none; }
+.sk-label { width: 60%; height: 0.875rem; }
+.sk-value { width: 40%; height: 2rem; }
+.sk-hint { width: 75%; height: 0.75rem; }
+.sk-title { width: 14rem; height: 1rem; margin-bottom: 1rem; }
+.sk-row { height: 1.25rem; margin-top: 0.75rem; }
+
+@keyframes shimmer {
+  from { background-position: 150% 0, 0 0; }
+  to { background-position: -50% 0, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk,
+  .spinning mat-icon {
+    animation: none;
+  }
+}

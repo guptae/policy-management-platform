@@ -1,0 +1,52 @@
+<form class="filters" [formGroup]="form" aria-label="Filter policies" (submit)="$event.preventDefault()">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Search</mat-label>
+    <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+    <input matInput formControlName="search" placeholder="Policy number or holder" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Status</mat-label>
+    <mat-select formControlName="status">
+      <mat-option [value]="null">Any</mat-option>
+      @for (s of statuses; track s) {
+        <mat-option [value]="s">{{ s }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Line of business</mat-label>
+    <mat-select formControlName="lineOfBusiness">
+      <mat-option [value]="null">Any</mat-option>
+      @for (lob of linesOfBusiness; track lob) {
+        <mat-option [value]="lob">{{ lob }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Region</mat-label>
+    <mat-select formControlName="region">
+      <mat-option [value]="null">Any</mat-option>
+      @for (r of regions; track r) {
+        <mat-option [value]="r">{{ r }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Effective date</mat-label>
+    <mat-date-range-input [rangePicker]="picker">
+      <input matStartDate formControlName="effectiveDateFrom" placeholder="From" aria-label="Effective date from" />
+      <input matEndDate formControlName="effectiveDateTo" placeholder="To" aria-label="Effective date to" />
+    </mat-date-range-input>
+    <mat-datepicker-toggle matIconSuffix [for]="picker" />
+    <mat-date-range-picker #picker />
+  </mat-form-field>
+
+  <button mat-stroked-button type="button" [disabled]="disabled() || !hasCriteria(criteria())" (click)="reset()">
+    <mat-icon aria-hidden="true">filter_alt_off</mat-icon>
+    Clear filters
+  </button>
+</form>

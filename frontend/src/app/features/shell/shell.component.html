@@ -1,0 +1,33 @@
+<a class="skip-link" href="#main-content" (click)="skipToMain($event)">Skip to main content</a>
+
+<header>
+  <mat-toolbar class="topbar">
+    <mat-icon class="logo" aria-hidden="true">shield</mat-icon>
+    <span class="brand">Policy Management</span>
+    <nav class="nav" aria-label="Main">
+      <a mat-button routerLink="/policies" routerLinkActive="active" ariaCurrentWhenActive="page">Policies</a>
+    </nav>
+    <span class="spacer"></span>
+    <button
+      mat-icon-button
+      type="button"
+      class="theme-toggle"
+      (click)="theme.toggle()"
+      [matTooltip]="toggleLabel()"
+      [attr.aria-label]="toggleLabel()"
+    >
+      <mat-icon aria-hidden="true">{{ isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+  </mat-toolbar>
+</header>
+
+<main id="main-content" class="content" tabindex="-1">
+  @if (alerts.alerts().length) {
+    <div class="alerts" aria-live="assertive">
+      @for (alert of alerts.alerts(); track alert.id) {
+        <app-error-alert [title]="alert.title" [message]="alert.message" (dismissed)="alerts.dismiss(alert.id)" />
+      }
+    </div>
+  }
+  <router-outlet />
+</main>

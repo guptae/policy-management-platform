@@ -1,0 +1,161 @@
+@use '@angular/material' as mat;
+
+// ---------------------------------------------------------------------------------------------
+// Design tokens
+//
+// Single source of truth for colour. Each token is `light-dark(<light>, <dark>)`, resolved by the
+// `color-scheme` on <html>: ThemeService sets it to `light` or `dark`; before Angular boots the
+// inline script in index.html does the same, and with no stored choice it follows the OS.
+//
+// Contrast (WCAG 2.1 AA), verified for both themes:
+//   text-primary / text-secondary on bg, surface, surface-*, accent-container  >= 4.5:1
+//   on-accent / accent, on-*-container / *-container, danger / surface        >= 4.5:1
+//   outline (form-field borders) and focus ring on bg / surfaces              >= 3:1
+// Re-check these pairs when changing a value.
+// ---------------------------------------------------------------------------------------------
+html {
+  --color-bg: light-dark(#f6f7f9, #111318);
+  --color-surface: light-dark(#ffffff, #181b21);
+  --color-surface-low: light-dark(#f9fafb, #15181d);
+  --color-surface-alt: light-dark(#eef1f5, #21252d);
+  --color-surface-high: light-dark(#e4e8ee, #2b3039);
+
+  --color-text-primary: light-dark(#1a1d23, #e7e9ee);
+  --color-text-secondary: light-dark(#4b5363, #b3bac7);
+
+  --color-accent: light-dark(#1d5fbf, #8ab4f8);
+  --color-on-accent: light-dark(#ffffff, #0a1d3d);
+  --color-accent-container: light-dark(#dce8fb, #1f3b66);
+  --color-on-accent-container: light-dark(#0b2c5e, #dce8fb);
+
+  --color-danger: light-dark(#b42318, #f2a59e);
+  --color-on-danger: light-dark(#ffffff, #4a0d07);
+  --color-danger-container: light-dark(#fde4e1, #5c1a14);
+  --color-on-danger-container: light-dark(#6a1209, #fde4e1);
+
+  --color-outline: light-dark(#737b8a, #8a92a1); // interactive borders (>= 3:1)
+  --color-border: light-dark(#cfd5de, #3a404b); // decorative dividers
+  --color-focus: light-dark(#1d5fbf, #8ab4f8);
+
+  --color-inverse-surface: light-dark(#2b2f36, #e7e9ee); // snackbars, tooltips
+  --color-on-inverse-surface: light-dark(#f1f3f6, #1f2228);
+  --color-inverse-accent: light-dark(#9cc0f5, #1d5fbf);
+
+  --focus-ring-width: 3px;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Angular Material theme driven by the tokens. `mat.theme` provides typography, shape, elevation
+// and a full set of fallback colours; `theme-overrides` then points every colour role our UI uses
+// at a token, so Material components and our own `--mat-sys-*` usages follow the tokens.
+// ---------------------------------------------------------------------------------------------
+html {
+  height: 100%;
+  color-scheme: light dark;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+
+  @include mat.theme-overrides(
+    (
+      background: var(--color-bg),
+      on-background: var(--color-text-primary),
+      surface: var(--color-surface),
+      surface-bright: var(--color-surface),
+      surface-dim: var(--color-surface-alt),
+      surface-container-lowest: var(--color-surface),
+      surface-container-low: var(--color-surface-low),
+      surface-container: var(--color-surface-alt),
+      surface-container-high: var(--color-surface-high),
+      surface-container-highest: var(--color-surface-high),
+      surface-variant: var(--color-surface-alt),
+      on-surface: var(--color-text-primary),
+      on-surface-variant: var(--color-text-secondary),
+      primary: var(--color-accent),
+      on-primary: var(--color-on-accent),
+      primary-container: var(--color-accent-container),
+      on-primary-container: var(--color-on-accent-container),
+      secondary: var(--color-accent),
+      on-secondary: var(--color-on-accent),
+      secondary-container: var(--color-accent-container),
+      on-secondary-container: var(--color-on-accent-container),
+      error: var(--color-danger),
+      on-error: var(--color-on-danger),
+      error-container: var(--color-danger-container),
+      on-error-container: var(--color-on-danger-container),
+      outline: var(--color-outline),
+      outline-variant: var(--color-border),
+      inverse-surface: var(--color-inverse-surface),
+      inverse-on-surface: var(--color-on-inverse-surface),
+      inverse-primary: var(--color-inverse-accent),
+    )
+  );
+
+  // Visible keyboard focus rings on Material components (buttons, checkboxes, sort headers,
+  // paginator, options, datepicker toggles…) in the token focus colour.
+  @include mat.strong-focus-indicators(
+    (
+      border-color: var(--color-focus),
+      border-width: var(--focus-ring-width),
+    )
+  );
+}
+
+body {
+  color-scheme: inherit;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  height: 100%;
+}
+
+// Focus ring for native focusable elements that don't carry Material's focus indicator.
+:where(a, button, input, select, textarea, summary, [tabindex]):not(.mat-mdc-button-base, .mat-mdc-input-element, .mat-sort-header-container, .mdc-checkbox__native-control):focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+// Windows High Contrast / forced colours: let the system draw focus with its own colour.
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText;
+  }
+}
+
+// Visually hidden but available to assistive tech.
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Skip link: hidden until focused.
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+
+  &:focus {
+    top: 0.5rem;
+  }
+}
