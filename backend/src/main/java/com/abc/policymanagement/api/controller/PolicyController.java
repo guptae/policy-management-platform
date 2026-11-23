@@ -9,6 +9,7 @@ import com.abc.policymanagement.api.mapper.PolicyMapper;
 import com.abc.policymanagement.domain.model.LineOfBusiness;
 import com.abc.policymanagement.domain.model.PolicyStatus;
 import com.abc.policymanagement.service.PolicyService;
+import com.abc.policymanagement.service.port.PageQuery;
 import com.abc.policymanagement.service.port.PolicyFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,9 +19,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,9 +66,36 @@ public class PolicyController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate effectiveDateTo,
             @Parameter(description = "Free-text search on policy number or policyholder name.")
             @RequestParam(required = false) String search,
-            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+            @Parameter(description = "Zero-based page index.", schema = @Schema(minimum = "0", defaultValue = "0"))
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size.", schema = @Schema(minimum = "1", maximum = "2000", defaultValue = "20"))
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort expression `property[,asc|desc]`, e.g. `premiumAmount,desc`.",
+                    example = "premiumAmount,desc")
+            @RequestParam(required = false) String sort) {
         PolicyFilter filter = new PolicyFilter(status, lineOfBusiness, region, effectiveDateFrom, effectiveDateTo, search);
-        return policyMapper.toPagedResponse(policyService.findAll(filter, pageable));
+        return policyMapper.toPagedResponse(policyService.findAll(filter, toPageQuery(page, size, sort)));
+    }
+
+    /** Parses {@code property[,asc|desc]}; invalid values surface as 400 via IllegalArgumentException. */
+    static PageQuery toPageQuery(int page, int size, String sort) {
+        if (sort == null || sort.isBlank()) {
+            return PageQuery.unsorted(page, size);
+        }
+        String[] parts = sort.split(",", -1);
+        if (parts.length > 2) {
+            throw new IllegalArgumentException("sort must be in the form property[,asc|desc]");
+        }
+        boolean ascending = true;
+        if (parts.length == 2) {
+            String direction = parts[1].trim();
+            if (direction.equalsIgnoreCase("desc")) {
+                ascending = false;
+            } else if (!direction.equalsIgnoreCase("asc")) {
+                throw new IllegalArgumentException("sort direction must be 'asc' or 'desc'");
+            }
+        }
+        return new PageQuery(page, size, parts[0].trim(), ascending);
     }
 
     @GetMapping("/{id}")

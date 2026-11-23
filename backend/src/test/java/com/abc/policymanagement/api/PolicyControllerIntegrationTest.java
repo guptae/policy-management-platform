@@ -1,5 +1,6 @@
 package com.abc.policymanagement.api;
 
+import com.abc.policymanagement.domain.model.LineOfBusiness;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -303,6 +305,49 @@ class PolicyControllerIntegrationTest {
         assertThat(body.has("totalPremiumByLineOfBusiness")).isTrue();
     }
 
+    @Test
+    void summaryReportsPremiumPerLineOfBusinessPerCurrencyWithoutCrossCurrencySumming() throws Exception {
+        // Expected: SUM(premium) grouped by (line_of_business, currency), keyed by API labels.
+        Map<String, Map<String, BigDecimal>> expected = new TreeMap<>();
+        for (LineOfBusiness lob : LineOfBusiness.values()) {
+            expected.put(lob.getLabel(), new TreeMap<>());
+        }
+        jdbcTemplate.query(
+                "SELECT line_of_business, currency, SUM(premium_amount) AS total "
+                        + "FROM policies GROUP BY line_of_business, currency",
+                rs -> {
+                    expected.get(LineOfBusiness.valueOf(rs.getString("line_of_business")).getLabel())
+                            .put(rs.getString("currency"), rs.getBigDecimal("total"));
+                });
+        long distinctCurrencies = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT currency) FROM policies", Long.class);
+        assertThat(distinctCurrencies)
+                .as("seed data must contain several currencies for this test to be meaningful")
+                .isGreaterThan(1);
+
+        JsonNode body = expectJson(get(BASE_PATH + "/summary"), 200);
+
+        JsonNode premiums = body.get("totalPremiumByLineOfBusiness");
+        Map<String, Map<String, BigDecimal>> actual = new TreeMap<>();
+        premiums.fields().forEachRemaining(lob -> {
+            Map<String, BigDecimal> perCurrency = new TreeMap<>();
+            lob.getValue().fields().forEachRemaining(c -> perCurrency.put(c.getKey(), c.getValue().decimalValue()));
+            actual.put(lob.getKey(), perCurrency);
+        });
+
+        // Every line of business is present under its API label (incl. "A&H"), even if it has no policies.
+        assertThat(actual.keySet()).containsExactlyInAnyOrderElementsOf(expected.keySet());
+        for (String lob : expected.keySet()) {
+            assertThat(actual.get(lob).keySet())
+                    .as("currencies for %s", lob)
+                    .containsExactlyInAnyOrderElementsOf(expected.get(lob).keySet());
+            expected.get(lob).forEach((currency, total) ->
+                    assertThat(actual.get(lob).get(currency))
+                            .as("premium total for %s / %s", lob, currency)
+                            .isEqualByComparingTo(total));
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Edge cases
     // ---------------------------------------------------------------------
@@ -312,6 +357,14 @@ class PolicyControllerIntegrationTest {
         JsonNode body = expectProblem(get(BASE_PATH).param("sort", "doesNotExist,asc"), 400);
 
         assertThat(body.get("status").asInt()).isEqualTo(400);
+    }
+
+    @Test
+    void entityFieldOutsideSortAllowlistIsRejectedWithBadRequestProblem() throws Exception {
+        // 'underwriter' exists on PolicyEntity but is not part of the API sort contract.
+        JsonNode body = expectProblem(get(BASE_PATH).param("sort", "underwriter,asc"), 400);
+
+        assertThat(body.get("detail").asText()).contains("Unsupported sort property");
     }
 
     @Test

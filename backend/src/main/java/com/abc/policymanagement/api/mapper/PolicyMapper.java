@@ -6,9 +6,9 @@ import com.abc.policymanagement.api.dto.PolicySummaryResponse;
 import com.abc.policymanagement.domain.model.LineOfBusiness;
 import com.abc.policymanagement.domain.model.Policy;
 import com.abc.policymanagement.domain.model.PolicyStatus;
+import com.abc.policymanagement.service.port.PageResult;
 import com.abc.policymanagement.service.port.PolicySummary;
 import org.mapstruct.Mapper;
-import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -25,13 +25,13 @@ public interface PolicyMapper {
 
     Policy toDomain(PolicyResponse response);
 
-    default PagedPolicyResponse<PolicyResponse> toPagedResponse(Page<Policy> page) {
+    default PagedPolicyResponse<PolicyResponse> toPagedResponse(PageResult<Policy> page) {
         return new PagedPolicyResponse<>(
-                page.getContent().stream().map(this::toResponse).toList(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages());
+                page.content().stream().map(this::toResponse).toList(),
+                page.page(),
+                page.size(),
+                page.totalElements(),
+                page.totalPages());
     }
 
     default PolicySummaryResponse toSummaryResponse(PolicySummary summary) {

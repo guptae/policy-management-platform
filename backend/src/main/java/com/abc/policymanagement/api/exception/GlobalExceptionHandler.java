@@ -1,9 +1,9 @@
 package com.abc.policymanagement.api.exception;
 
+import com.abc.policymanagement.service.InvalidQueryException;
 import com.abc.policymanagement.service.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -35,17 +35,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+    @ExceptionHandler({IllegalArgumentException.class, InvalidQueryException.class})
+    public ProblemDetail handleIllegalArgument(RuntimeException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-        problem.setTitle("Invalid Request");
-        return problem;
-    }
-
-    @ExceptionHandler(PropertyReferenceException.class)
-    public ProblemDetail handleUnknownSortProperty(PropertyReferenceException ex) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST, "Unknown sort property: " + ex.getPropertyName());
         problem.setTitle("Invalid Request");
         return problem;
     }

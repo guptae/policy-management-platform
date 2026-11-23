@@ -8,17 +8,17 @@ import com.abc.policymanagement.infrastructure.config.CorsConfig;
 import com.abc.policymanagement.infrastructure.config.EnumConverterConfig;
 import com.abc.policymanagement.service.PolicyService;
 import com.abc.policymanagement.service.ResourceNotFoundException;
+import com.abc.policymanagement.service.port.PageQuery;
+import com.abc.policymanagement.service.port.PageResult;
 import com.abc.policymanagement.service.port.PolicyFilter;
 import com.abc.policymanagement.service.port.PolicySummary;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +33,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -72,7 +73,7 @@ class PolicyControllerTest {
 
     @Test
     void listPoliciesMapsLabelsToFiltersAndEnumsToLabels() throws Exception {
-        Page<Policy> page = new PageImpl<>(List.of(policy(UUID.randomUUID())), PageRequest.of(0, 5), 1);
+        PageResult<Policy> page = new PageResult<>(List.of(policy(UUID.randomUUID())), 0, 5, 1, 1);
         when(policyService.findAll(any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/policies")
@@ -93,27 +94,52 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.size").value(5));
 
         ArgumentCaptor<PolicyFilter> filter = ArgumentCaptor.forClass(PolicyFilter.class);
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(policyService).findAll(filter.capture(), pageable.capture());
+        ArgumentCaptor<PageQuery> query = ArgumentCaptor.forClass(PageQuery.class);
+        verify(policyService).findAll(filter.capture(), query.capture());
         assertThat(filter.getValue().status()).isEqualTo(PolicyStatus.ACTIVE);
         assertThat(filter.getValue().lineOfBusiness()).isEqualTo(LineOfBusiness.AH);
         assertThat(filter.getValue().region()).isEqualTo("Japan");
         assertThat(filter.getValue().effectiveDateFrom()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(filter.getValue().search()).isEqualTo("Tanaka");
-        assertThat(pageable.getValue().getPageSize()).isEqualTo(5);
-        assertThat(pageable.getValue().getSort().getOrderFor("premiumAmount").isDescending()).isTrue();
+        assertThat(query.getValue()).isEqualTo(new PageQuery(0, 5, "premiumAmount", false));
     }
 
     @Test
     void listPoliciesDefaultsToPageZeroSizeTwenty() throws Exception {
-        when(policyService.findAll(any(), any())).thenReturn(Page.empty());
+        when(policyService.findAll(any(), any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/v1/policies")).andExpect(status().isOk());
 
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(policyService).findAll(any(), pageable.capture());
-        assertThat(pageable.getValue().getPageNumber()).isZero();
-        assertThat(pageable.getValue().getPageSize()).isEqualTo(20);
+        ArgumentCaptor<PageQuery> query = ArgumentCaptor.forClass(PageQuery.class);
+        verify(policyService).findAll(any(), query.capture());
+        assertThat(query.getValue()).isEqualTo(PageQuery.unsorted(0, 20));
+    }
+
+    @Test
+    void sortWithoutDirectionDefaultsToAscending() throws Exception {
+        when(policyService.findAll(any(), any())).thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/v1/policies").param("sort", "expiryDate")).andExpect(status().isOk());
+
+        ArgumentCaptor<PageQuery> query = ArgumentCaptor.forClass(PageQuery.class);
+        verify(policyService).findAll(any(), query.capture());
+        assertThat(query.getValue()).isEqualTo(new PageQuery(0, 20, "expiryDate", true));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "page | -1",
+            "size | 0",
+            "size | 2001",
+            "sort | premiumAmount,sideways",
+            "sort | premiumAmount,desc,extra"
+    })
+    void invalidPagingOrSortIsRejectedWith400ProblemDetail(String param, String value) throws Exception {
+        mockMvc.perform(get("/api/v1/policies").param(param, value))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400));
+        verifyNoInteractions(policyService);
     }
 
     @Test

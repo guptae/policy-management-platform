@@ -3,11 +3,16 @@ package com.abc.policymanagement.infrastructure.persistence;
 import com.abc.policymanagement.domain.model.LineOfBusiness;
 import com.abc.policymanagement.domain.model.Policy;
 import com.abc.policymanagement.domain.model.PolicyStatus;
+import com.abc.policymanagement.service.InvalidQueryException;
+import com.abc.policymanagement.service.port.PageQuery;
+import com.abc.policymanagement.service.port.PageResult;
 import com.abc.policymanagement.service.port.PolicyFilter;
 import com.abc.policymanagement.service.port.PolicyRepository;
 import com.abc.policymanagement.service.port.PolicySummary;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +38,21 @@ public class PolicyRepositoryAdapter implements PolicyRepository {
     static final String NOT_FOUND = "not_found";
     private static final int EXPIRING_SOON_DAYS = 30;
 
+    /**
+     * API sort property → {@link PolicyEntity} property. The API contract is defined here, so renaming
+     * an entity field only requires updating the right-hand side.
+     */
+    private static final Map<String, String> SORTABLE_PROPERTIES = Map.of(
+            "policyNumber", "policyNumber",
+            "policyholderName", "policyholderName",
+            "lineOfBusiness", "lineOfBusiness",
+            "status", "status",
+            "premiumAmount", "premiumAmount",
+            "region", "region",
+            "effectiveDate", "effectiveDate",
+            "expiryDate", "expiryDate",
+            "flaggedForReview", "flaggedForReview");
+
     private final PolicyJpaRepository jpaRepository;
 
     public PolicyRepositoryAdapter(PolicyJpaRepository jpaRepository) {
@@ -41,9 +61,27 @@ public class PolicyRepositoryAdapter implements PolicyRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<Policy> findAll(PolicyFilter filter, Pageable pageable) {
-        Specification<PolicyEntity> spec = toSpecification(filter);
-        return jpaRepository.findAll(spec, pageable).map(PolicyRepositoryAdapter::toDomain);
+    public PageResult<Policy> findAll(PolicyFilter filter, PageQuery query) {
+        Pageable pageable = PageRequest.of(query.page(), query.size(), toSort(query));
+        Page<PolicyEntity> page = jpaRepository.findAll(toSpecification(filter), pageable);
+        return new PageResult<>(
+                page.getContent().stream().map(PolicyRepositoryAdapter::toDomain).toList(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages());
+    }
+
+    /** Maps an API sort property to an entity property, rejecting anything not explicitly allowed. */
+    private static Sort toSort(PageQuery query) {
+        if (query.sortProperty() == null) {
+            return Sort.unsorted();
+        }
+        String entityProperty = SORTABLE_PROPERTIES.get(query.sortProperty());
+        if (entityProperty == null) {
+            throw new InvalidQueryException("Unsupported sort property: " + query.sortProperty());
+        }
+        return query.ascending() ? Sort.by(entityProperty).ascending() : Sort.by(entityProperty).descending();
     }
 
     @Override

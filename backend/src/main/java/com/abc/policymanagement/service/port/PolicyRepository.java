@@ -1,8 +1,6 @@
 package com.abc.policymanagement.service.port;
 
 import com.abc.policymanagement.domain.model.Policy;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -14,7 +12,10 @@ import java.util.UUID;
  */
 public interface PolicyRepository {
 
-    Page<Policy> findAll(PolicyFilter filter, Pageable pageable);
+    /**
+     * @throws com.abc.policymanagement.service.InvalidQueryException if {@code query.sortProperty()} is not a sortable API property
+     */
+    PageResult<Policy> findAll(PolicyFilter filter, PageQuery query);
 
     Optional<Policy> findById(UUID id);
 

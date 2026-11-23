@@ -1,11 +1,11 @@
 package com.abc.policymanagement.service;
 
 import com.abc.policymanagement.domain.model.Policy;
+import com.abc.policymanagement.service.port.PageQuery;
+import com.abc.policymanagement.service.port.PageResult;
 import com.abc.policymanagement.service.port.PolicyFilter;
 import com.abc.policymanagement.service.port.PolicyRepository;
 import com.abc.policymanagement.service.port.PolicySummary;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,8 +21,8 @@ public class PolicyService {
         this.policyRepository = policyRepository;
     }
 
-    public Page<Policy> findAll(PolicyFilter filter, Pageable pageable) {
-        return policyRepository.findAll(filter, pageable);
+    public PageResult<Policy> findAll(PolicyFilter filter, PageQuery query) {
+        return policyRepository.findAll(filter, query);
     }
 
     public Policy findById(UUID id) {
